@@ -1,0 +1,148 @@
+import { useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Sprout, Plus, List, TrendingUp, FileText } from 'lucide-react';
+import { getCurrentUser, getCropsByFarmer, getSalesByFarmer } from '@/lib/localStorage';
+import Navbar from '@/components/Navbar';
+
+const FarmerDashboard = () => {
+  const navigate = useNavigate();
+  const currentUser = getCurrentUser();
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'farmer') {
+      navigate('/login');
+    }
+  }, [currentUser, navigate]);
+
+  if (!currentUser) return null;
+
+  const crops = getCropsByFarmer(currentUser.id);
+  const sales = getSalesByFarmer(currentUser.id);
+  const totalRevenue = sales.reduce((sum, sale) => sum + sale.total, 0);
+  const availableCrops = crops.filter(c => c.status === 'available').length;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8 animate-fade-in">
+          <h1 className="text-3xl font-bold mb-2">Farmer Dashboard</h1>
+          <p className="text-muted-foreground">Manage your crops and track your sales</p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 animate-slide-in">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Crops</CardTitle>
+              <Sprout className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{crops.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {availableCrops} available for sale
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+              <TrendingUp className="h-4 w-4 text-secondary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{sales.length}</div>
+              <p className="text-xs text-muted-foreground">Completed transactions</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Revenue</CardTitle>
+              <FileText className="h-4 w-4 text-accent" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">Total earnings</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Average Sale</CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                ${sales.length > 0 ? (totalRevenue / sales.length).toFixed(2) : '0.00'}
+              </div>
+              <p className="text-xs text-muted-foreground">Per transaction</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 animate-scale-in">
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                  <Plus className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <CardTitle>Add New Crop</CardTitle>
+                  <CardDescription>List a new crop for sale</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full">
+                <Link to="/farmer/add-crop">Add Crop</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10">
+                  <List className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <CardTitle>Manage Crops</CardTitle>
+                  <CardDescription>View and edit your crops</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/farmer/manage-crops">View Crops</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-secondary/10">
+                  <FileText className="h-6 w-6 text-secondary" />
+                </div>
+                <div>
+                  <CardTitle>Sales & Reports</CardTitle>
+                  <CardDescription>Track your earnings</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button asChild variant="secondary" className="w-full">
+                <Link to="/farmer/sales">View Sales</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default FarmerDashboard;
