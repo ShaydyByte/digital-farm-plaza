@@ -13,6 +13,8 @@ import ManageCrops from "./pages/ManageCrops";
 import Marketplace from "./pages/Marketplace";
 import Sales from "./pages/Sales";
 import Purchases from "./pages/Purchases";
+import AdminDashboard from "./pages/AdminDashboard";
+import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +36,8 @@ const App = () => (
           <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
           <Route path="/buyer/marketplace" element={<Marketplace />} />
           <Route path="/buyer/purchases" element={<Purchases />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/messages" element={<Messages />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

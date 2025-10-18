@@ -1,16 +1,17 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sprout, LogOut } from 'lucide-react';
-import { getCurrentUser, clearCurrentUser } from '@/lib/localStorage';
+import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const currentUser = getCurrentUser();
+  const { profile } = useAuth();
 
-  const handleLogout = () => {
-    clearCurrentUser();
+  const handleLogout = async () => {
+    await signOut();
     toast({
       title: "Logged out successfully",
       description: "Come back soon!",
@@ -28,10 +29,10 @@ const Navbar = () => {
           </Link>
           
           <div className="flex items-center gap-4">
-            {currentUser ? (
+            {profile ? (
               <>
                 <span className="text-sm text-muted-foreground">
-                  Welcome, <span className="font-semibold text-foreground">{currentUser.name}</span>
+                  Welcome, <span className="font-semibold text-foreground">{profile.full_name}</span>
                 </span>
                 <Button 
                   variant="ghost" 

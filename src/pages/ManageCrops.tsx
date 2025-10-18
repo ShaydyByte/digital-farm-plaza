@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Edit, Trash2, Plus } from 'lucide-react';
-import { getCurrentUser, getCropsByFarmer, deleteCrop, type Crop } from '@/lib/localStorage';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import Navbar from '@/components/Navbar';
 import {
@@ -19,30 +20,66 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+interface Crop {
+  id: string;
+  crop_name: string;
+  crop_type: string;
+  quantity: number;
+  unit: string;
+  price: number;
+  harvest_date: string;
+  status: string;
+  image_url: string | null;
+}
+
 const ManageCrops = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const currentUser = getCurrentUser();
+  const { profile, loading } = useAuth();
   const [crops, setCrops] = useState<Crop[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'farmer') {
+    if (!loading && (!profile || profile.role !== 'farmer')) {
       navigate('/login');
-      return;
     }
-    loadCrops();
-  }, [currentUser, navigate]);
+  }, [profile, loading, navigate]);
 
-  const loadCrops = () => {
-    if (currentUser) {
-      const farmerCrops = getCropsByFarmer(currentUser.id);
-      setCrops(farmerCrops);
+  useEffect(() => {
+    if (profile) {
+      loadCrops();
+    }
+  }, [profile]);
+
+  const loadCrops = async () => {
+    if (!profile) return;
+
+    const { data } = await supabase
+      .from('crops')
+      .select('*')
+      .eq('farmer_id', profile.id)
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      setCrops(data);
     }
   };
 
-  const handleDelete = (cropId: string) => {
-    deleteCrop(cropId);
+  const handleDelete = async (cropId: string) => {
+    const { error } = await supabase
+      .from('crops')
+      .delete()
+      .eq('id', cropId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete crop.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     loadCrops();
     setDeleteId(null);
     toast({
@@ -50,6 +87,9 @@ const ManageCrops = () => {
       description: "The crop has been removed from your inventory.",
     });
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (!profile) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,6 +130,7 @@ const ManageCrops = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Image</TableHead>
                       <TableHead>Crop Name</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Quantity</TableHead>
@@ -102,28 +143,31 @@ const ManageCrops = () => {
                   <TableBody>
                     {crops.map((crop) => (
                       <TableRow key={crop.id}>
-                        <TableCell className="font-medium">{crop.cropName}</TableCell>
-                        <TableCell className="capitalize">{crop.cropType}</TableCell>
-                        <TableCell>{crop.quantity} {crop.unit}</TableCell>
-                        <TableCell>${crop.price?.toFixed(2) || 'N/A'}</TableCell>
-                        <TableCell>{new Date(crop.harvestDate).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <Badge variant={crop.status === 'available' ? 'default' : 'secondary'}>
+                          {crop.image_url ? (
+                            <img
+                              src={crop.image_url}
+                              alt={crop.crop_name}
+                              className="h-12 w-12 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
+                              No image
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{crop.crop_name}</TableCell>
+                        <TableCell className="capitalize">{crop.crop_type}</TableCell>
+                        <TableCell>{crop.quantity} {crop.unit}</TableCell>
+                        <TableCell>${crop.price.toFixed(2)}</TableCell>
+                        <TableCell>{new Date(crop.harvest_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={crop.status === 'active' ? 'default' : 'secondary'}>
                             {crop.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => toast({
-                                title: "Edit feature",
-                                description: "Edit functionality coming soon!",
-                              })}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,60 +6,50 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Sprout } from 'lucide-react';
-import { findUserByEmail, saveUser, setCurrentUser, getCurrentUser } from '@/lib/localStorage';
+import { signUp, UserRole } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Signup = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'farmer' | 'buyer'>('farmer');
+  const [role, setRole] = useState<UserRole>('farmer');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      navigate(currentUser.role === 'farmer' ? '/farmer/dashboard' : '/buyer/dashboard');
-    }
-  }, [navigate]);
+  // Redirect if already logged in
+  if (profile) {
+    navigate(profile.role === 'farmer' ? '/farmer/dashboard' : profile.role === 'buyer' ? '/buyer/dashboard' : '/admin/dashboard');
+    return null;
+  }
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const existingUser = findUserByEmail(email);
-    
-    if (existingUser) {
+    try {
+      await signUp(email, password, name, role);
+      
+      toast({
+        title: "Account created!",
+        description: `Welcome to FarmLinkJA, ${name}! You can now login.`,
+      });
+
+      setTimeout(() => {
+        navigate('/login');
+      }, 1000);
+    } catch (error: any) {
       toast({
         title: "Signup failed",
-        description: "An account with this email already exists.",
+        description: error.message || "An error occurred during signup.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    const newUser = {
-      id: crypto.randomUUID(),
-      email,
-      password,
-      role,
-      name,
-    };
-
-    saveUser(newUser);
-    setCurrentUser(newUser);
-
-    toast({
-      title: "Account created!",
-      description: `Welcome to FarmLinkJA, ${name}!`,
-    });
-
-    setTimeout(() => {
-      navigate(role === 'farmer' ? '/farmer/dashboard' : '/buyer/dashboard');
-    }, 500);
   };
 
   return (

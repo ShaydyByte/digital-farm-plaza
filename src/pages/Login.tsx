@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sprout } from 'lucide-react';
-import { findUserByEmail, setCurrentUser, getCurrentUser } from '@/lib/localStorage';
+import { signIn } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,49 +15,37 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
 
-  useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      navigate(currentUser.role === 'farmer' ? '/farmer/dashboard' : '/buyer/dashboard');
-    }
-  }, [navigate]);
+  // Redirect if already logged in
+  if (profile) {
+    navigate(profile.role === 'farmer' ? '/farmer/dashboard' : profile.role === 'buyer' ? '/buyer/dashboard' : '/admin/dashboard');
+    return null;
+  }
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const user = findUserByEmail(email);
-    
-    if (!user) {
+    try {
+      await signIn(email, password);
+      
+      toast({
+        title: "Login successful!",
+        description: "Welcome back!",
+      });
+
+      // The useAuth hook will handle navigation after login
+      window.location.reload();
+    } catch (error: any) {
       toast({
         title: "Login failed",
-        description: "No account found with this email.",
+        description: error.message || "Invalid email or password.",
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
-      return;
     }
-
-    if (user.password !== password) {
-      toast({
-        title: "Login failed",
-        description: "Incorrect password.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    setCurrentUser(user);
-    toast({
-      title: "Login successful!",
-      description: `Welcome back, ${user.name}!`,
-    });
-
-    setTimeout(() => {
-      navigate(user.role === 'farmer' ? '/farmer/dashboard' : '/buyer/dashboard');
-    }, 500);
   };
 
   return (

@@ -6,14 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft } from 'lucide-react';
-import { getCurrentUser, saveCrop } from '@/lib/localStorage';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
+import ImageUpload from '@/components/ImageUpload';
 
 const AddCrop = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const currentUser = getCurrentUser();
+  const { profile, loading } = useAuth();
+  const [imageUrl, setImageUrl] = useState('');
 
   const [formData, setFormData] = useState({
     cropName: '',
@@ -26,38 +29,48 @@ const AddCrop = () => {
   });
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'farmer') {
+    if (!loading && (!profile || profile.role !== 'farmer')) {
       navigate('/login');
     }
-  }, [currentUser, navigate]);
+  }, [profile, loading, navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!currentUser) return;
+    if (!profile) return;
 
-    const newCrop = {
-      id: crypto.randomUUID(),
-      farmerId: currentUser.id,
-      cropName: formData.cropName,
-      cropType: formData.cropType,
-      plantDate: formData.plantDate,
-      harvestDate: formData.harvestDate,
-      quantity: parseFloat(formData.quantity),
-      unit: formData.unit,
-      status: 'available' as const,
-      price: parseFloat(formData.price),
-    };
+    try {
+      const { error } = await supabase.from('crops').insert({
+        farmer_id: profile.id,
+        crop_name: formData.cropName,
+        crop_type: formData.cropType,
+        plant_date: formData.plantDate,
+        harvest_date: formData.harvestDate,
+        quantity: parseFloat(formData.quantity),
+        unit: formData.unit,
+        price: parseFloat(formData.price),
+        image_url: imageUrl || null,
+        status: 'active',
+      });
 
-    saveCrop(newCrop);
+      if (error) throw error;
 
-    toast({
-      title: "Crop added successfully!",
-      description: `${formData.cropName} has been added to your inventory.`,
-    });
+      toast({
+        title: "Crop added successfully!",
+        description: `${formData.cropName} has been added to your inventory.`,
+      });
 
-    navigate('/farmer/manage-crops');
+      navigate('/farmer/manage-crops');
+    } catch (error: any) {
+      toast({
+        title: "Failed to add crop",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
+
+  if (loading) return <div>Loading...</div>;
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -178,6 +191,11 @@ const AddCrop = () => {
                   />
                 </div>
               </div>
+
+              <ImageUpload
+                onImageUploaded={setImageUrl}
+                currentImageUrl={imageUrl}
+              />
 
               <div className="flex gap-4 pt-4">
                 <Button type="submit" className="flex-1">

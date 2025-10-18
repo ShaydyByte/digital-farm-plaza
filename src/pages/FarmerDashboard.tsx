@@ -1,27 +1,65 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Sprout, Plus, List, TrendingUp, FileText } from 'lucide-react';
-import { getCurrentUser, getCropsByFarmer, getSalesByFarmer } from '@/lib/localStorage';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/Navbar';
 
 const FarmerDashboard = () => {
+  const { profile, loading } = useAuth();
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const [stats, setStats] = useState({
+    totalCrops: 0,
+    activeCrops: 0,
+    totalSales: 0,
+    revenue: 0,
+  });
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'farmer') {
+    if (!loading && (!profile || profile.role !== 'farmer')) {
       navigate('/login');
     }
-  }, [currentUser, navigate]);
+  }, [profile, loading, navigate]);
 
-  if (!currentUser) return null;
+  useEffect(() => {
+    if (profile) {
+      fetchStats();
+    }
+  }, [profile]);
 
-  const crops = getCropsByFarmer(currentUser.id);
-  const sales = getSalesByFarmer(currentUser.id);
-  const totalRevenue = sales.reduce((sum, sale) => sum + sale.total, 0);
-  const availableCrops = crops.filter(c => c.status === 'available').length;
+  const fetchStats = async () => {
+    if (!profile) return;
+
+    // Fetch crops
+    const { data: crops } = await supabase
+      .from('crops')
+      .select('*')
+      .eq('farmer_id', profile.id);
+
+    const totalCrops = crops?.length || 0;
+    const activeCrops = crops?.filter(c => c.status === 'active').length || 0;
+
+    // Fetch sales
+    const { data: sales } = await supabase
+      .from('sales')
+      .select('*')
+      .eq('farmer_id', profile.id);
+
+    const totalSales = sales?.length || 0;
+    const revenue = sales?.reduce((sum, sale) => sum + parseFloat(sale.total_price.toString()), 0) || 0;
+
+    setStats({
+      totalCrops,
+      activeCrops,
+      totalSales,
+      revenue,
+    });
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (!profile || profile.role !== 'farmer') return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -39,9 +77,9 @@ const FarmerDashboard = () => {
               <Sprout className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{crops.length}</div>
+              <div className="text-2xl font-bold">{stats.totalCrops}</div>
               <p className="text-xs text-muted-foreground">
-                {availableCrops} available for sale
+                {stats.activeCrops} available for sale
               </p>
             </CardContent>
           </Card>
@@ -52,7 +90,7 @@ const FarmerDashboard = () => {
               <TrendingUp className="h-4 w-4 text-secondary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{sales.length}</div>
+              <div className="text-2xl font-bold">{stats.totalSales}</div>
               <p className="text-xs text-muted-foreground">Completed transactions</p>
             </CardContent>
           </Card>
@@ -63,7 +101,7 @@ const FarmerDashboard = () => {
               <FileText className="h-4 w-4 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+              <div className="text-2xl font-bold">${stats.revenue.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">Total earnings</p>
             </CardContent>
           </Card>
@@ -75,7 +113,7 @@ const FarmerDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ${sales.length > 0 ? (totalRevenue / sales.length).toFixed(2) : '0.00'}
+                ${stats.totalSales > 0 ? (stats.revenue / stats.totalSales).toFixed(2) : '0.00'}
               </div>
               <p className="text-xs text-muted-foreground">Per transaction</p>
             </CardContent>
