@@ -14,4 +14,28 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
   }
+  // Temporary admin seeding (run once)
+async function seedAdmin() {
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email: "shayd.bailey2020@gmail.com",
+      password: "admin123",
+      options: {
+        data: { role: "Admin" }
+      }
+    });
+
+    if (error) {
+      console.log("⚠️ Admin seed skipped:", error.message);
+    } else {
+      console.log("✅ Admin account created:", data.user?.email);
+    }
+  } catch (e) {
+    console.error("Error seeding admin:", e);
+  }
+}
+
+// Call it automatically on first load
+seedAdmin();
+
 });
