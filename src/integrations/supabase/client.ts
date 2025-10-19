@@ -14,6 +14,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
   }
+  });
   // Temporary admin seeding (run once)
 async function seedAdmin() {
   try {
@@ -38,4 +39,4 @@ async function seedAdmin() {
 // Call it automatically on first load
 seedAdmin();
 
-});
+
