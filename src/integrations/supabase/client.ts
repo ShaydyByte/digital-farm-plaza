@@ -7,25 +7,27 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
+export const supabase = createClient<Database>(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
   }
-});
+); // ✅ Properly closed here
 
-// ✅ Close createClient() before adding anything below
-
-// Temporary admin seeding (run once)
+// ✅ Temporary admin seeding (run once)
 async function seedAdmin() {
   try {
     const { data, error } = await supabase.auth.signUp({
       email: "admin@farmlinkja.com",
       password: "admin123",
       options: {
-        data: { role: "Admin" }
-      }
+        data: { role: "Admin" },
+      },
     });
 
     if (error) {
@@ -38,5 +40,5 @@ async function seedAdmin() {
   }
 }
 
-// Run the seeding function
+// ✅ Run the seeding function
 seedAdmin();
