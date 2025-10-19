@@ -1,42 +1,67 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sprout } from 'lucide-react';
-import { signIn } from '@/lib/auth';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Sprout } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { profile } = useAuth();
 
-  // Redirect if already logged in
-  if (profile) {
-    navigate(profile.role === 'farmer' ? '/farmer/dashboard' : profile.role === 'buyer' ? '/buyer/dashboard' : '/admin/dashboard');
-    return null;
-  }
+  // ✅ Automatically redirect logged-in users
+  useEffect(() => {
+    if (profile) {
+      if (profile.role === "Admin") navigate("/admin/dashboard");
+      else if (profile.role === "Farmer") navigate("/farmer/dashboard");
+      else if (profile.role === "Buyer") navigate("/buyer/dashboard");
+    }
+  }, [profile, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await signIn(email, password);
-      
-      toast({
-        title: "Login successful!",
-        description: "Welcome back!",
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: {
+          // ✅ Important for production (Vercel)
+          redirectTo: "https://farmlinkja-e47lij178-shaydbailey2020-7223s-projects.vercel.app/",
+        },
       });
 
-      // The useAuth hook will handle navigation after login
-      window.location.reload();
+      if (error) throw error;
+
+      toast({
+        title: "Login successful!",
+        description: "Redirecting to your dashboard...",
+      });
+
+      // ✅ Load profile and redirect by role
+      const user = data.user;
+      if (user) {
+        const { data: userData } = await supabase
+          .from("Users")
+          .select("role")
+          .eq("email", user.email)
+          .single();
+
+        if (userData?.role === "Admin") navigate("/admin/dashboard");
+        else if (userData?.role === "Farmer") navigate("/farmer/dashboard");
+        else navigate("/buyer/dashboard");
+      } else {
+        window.location.href = "/";
+      }
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -65,7 +90,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="farmer@example.com"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
