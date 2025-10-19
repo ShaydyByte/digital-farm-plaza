@@ -1,49 +1,55 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import FarmerDashboard from "./pages/FarmerDashboard";
-import BuyerDashboard from "./pages/BuyerDashboard";
-import AddCrop from "./pages/AddCrop";
-import ManageCrops from "./pages/ManageCrops";
-import Marketplace from "./pages/Marketplace";
-import Sales from "./pages/Sales";
-import Purchases from "./pages/Purchases";
-import AdminDashboard from "./pages/AdminDashboard";
-import Messages from "./pages/Messages";
-import NotFound from "./pages/NotFound";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { useUser } from "@supabase/auth-helpers-react";
+...
+const App = () => {
+  const user = useUser();
 
-const queryClient = new QueryClient();
+  // You might fetch userRole from your DB or metadata here if needed
+  const userRole = user?.user_metadata?.role;
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
-          <Route path="/farmer/add-crop" element={<AddCrop />} />
-          <Route path="/farmer/manage-crops" element={<ManageCrops />} />
-          <Route path="/farmer/sales" element={<Sales />} />
-          <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
-          <Route path="/buyer/marketplace" element={<Marketplace />} />
-          <Route path="/buyer/purchases" element={<Purchases />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/messages" element={<Messages />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
-export default App;
+            {/* Protected routes */}
+            <Route
+              path="/farmer/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["farmer"]} userRole={userRole}>
+                  <FarmerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buyer/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["buyer"]} userRole={userRole}>
+                  <BuyerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]} userRole={userRole}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Catch-all */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
